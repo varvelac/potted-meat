@@ -1,0 +1,230 @@
+{
+    "anims": [
+        {
+            "key": "player-left",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 0,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 4,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 8,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "player-down",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 1,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 5,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 9,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "player-up",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 2,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 6,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 10,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "player-right",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 3,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 7,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 11,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "enemy-left",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 48,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 52,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 56,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "enemy-down",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 49,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 53,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 57,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "enemy-up",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 50,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 54,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 58,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        },
+        {
+            "key": "enemy-right",
+            "type": "frame",
+            "frames": [
+                {
+                    "key": "characters",
+                    "frame": 51,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 55,
+                    "duration": 0,
+                    "keyframe": false
+                },
+                {
+                    "key": "characters",
+                    "frame": 59,
+                    "duration": 0,
+                    "keyframe": false
+                }
+            ],
+            "frameRate": 10,
+            "skipMissedFrames": true,
+            "randomFrame": false
+        }
+    ],
+    "globalTimeScale": 1,
+    "meta": {
+        "app": "Phaser Editor 2D v3",
+        "contentType": "Phaser v3 Animations"
+    },
+    "settings": {
+        "sourceLang": "JAVA_SCRIPT",
+        "esModule": true,
+        "generateCode": true
+    }
+}
