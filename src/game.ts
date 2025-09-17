@@ -10,10 +10,10 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, BattleScene, UIScene], // <-- add UIScene so it can overlay BattleScene
   physics: {
     default: 'arcade',
-    arcade: {
-      gravity: { y: 0 },
-      debug: false
-    }
+    // arcade: {
+    //   gravity: { y: 0 },
+    //   debug: false
+    // }
   }
 };
 export default config;
