@@ -57,12 +57,9 @@ export default class HandView {
 
   /**
    * Rebuild the hand UI from scratch.
-   * - team: 'A'|'B' is used to flip layout or apply team colors if needed.
-   * - hand: array of Card objects (render-only).
-   * - baseY: vertical position where the top of the first row should be drawn.
-   * - Returns the created TileContainer array for external bookkeeping if needed.
+   * - team: ActorID (string) so views are not limited to 'A'|'B'
    */
-  build(team: "A" | "B", hand: Card[], baseY: number, colorHex: string) {
+  build(team: string, hand: Card[], baseY: number, colorHex: string) {
     this.clear();
     this.tiles = [];
 
@@ -121,12 +118,10 @@ export default class HandView {
       });
 
       g.on("pointerup", () => {
-        // If card needs direction, show radial UI here in the HandView (visual lives in UIScene).
         if (needsDirection(card)) {
           this.showRadial(team, card, container, i);
           return;
         }
-        // Emit a queue request (BattleScene will validate and update state)
         this.scene.game.events.emit("ui:queueRequested", { team, handIndex: i, card });
       });
 
@@ -137,7 +132,7 @@ export default class HandView {
     return this.tiles;
   }
 
-  private showRadial(team: "A"|"B", card: Card, tile: TileContainer, handIndex: number) {
+  private showRadial(team: string, card: Card, tile: TileContainer, handIndex: number) {
     const overlay = this.scene.add.container(0, 0);
     const cx = (CARD_W) / 2;
     const cy = (CARD_H) / 2;

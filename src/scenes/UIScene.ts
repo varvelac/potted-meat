@@ -5,37 +5,21 @@ import { COLOR_A, COLOR_B } from './constants';
 
 /**
  * UIScene
- * - Listens for a global 'matchStateUpdated' event and redraws hands/queues.
- * - Owns its own containers so it can sit above BattleScene.
+ * - Now supports dynamic teams: it creates per-team layers/views on demand
+ *   and iterates state.teams when redrawing.
  */
 export default class UIScene extends Phaser.Scene {
-  private handLayerA!: Phaser.GameObjects.Container;
-  private handLayerB!: Phaser.GameObjects.Container;
-  private queueLayerA!: Phaser.GameObjects.Container;
-  private queueLayerB!: Phaser.GameObjects.Container;
-
-  private handViewA!: HandView;
-  private handViewB!: HandView;
-  private queueViewA!: QueueView;
-  private queueViewB!: QueueView;
+  private handLayers: Record<string, Phaser.GameObjects.Container> = {};
+  private queueLayers: Record<string, Phaser.GameObjects.Container> = {};
+  private handViews: Record<string, HandView> = {};
+  private queueViews: Record<string, QueueView> = {};
 
   constructor() {
     super('UI');
   }
 
   create() {
-    // Create top-level layers for the UI and keep a high depth so it overlays the board.
-    this.handLayerA = this.add.container(0, 0).setDepth(1200);
-    this.handLayerB = this.add.container(0, 0).setDepth(1200);
-    this.queueLayerA = this.add.container(0, 0).setDepth(1100);
-    this.queueLayerB = this.add.container(0, 0).setDepth(1100);
-
-    this.handViewA = new HandView(this, this.handLayerA);
-    this.handViewB = new HandView(this, this.handLayerB);
-    this.queueViewA = new QueueView(this, this.queueLayerA);
-    this.queueViewB = new QueueView(this, this.queueLayerB);
-
-    // Listen for global updates from the BattleScene
+    // no per-team creation here; we create containers when first needed
     this.game.events.on('matchStateUpdated', this.onMatchStateUpdated, this);
   }
 
@@ -43,29 +27,48 @@ export default class UIScene extends Phaser.Scene {
     this.game.events.off('matchStateUpdated', this.onMatchStateUpdated, this);
   }
 
+  private ensureTeamViews(teamId: string) {
+    if (!this.handLayers[teamId]) {
+      this.handLayers[teamId] = this.add.container(0, 0).setDepth(1200);
+      this.handViews[teamId] = new HandView(this, this.handLayers[teamId]);
+    }
+    if (!this.queueLayers[teamId]) {
+      this.queueLayers[teamId] = this.add.container(0, 0).setDepth(1100);
+      this.queueViews[teamId] = new QueueView(this, this.queueLayers[teamId]);
+    }
+  }
+
   private onMatchStateUpdated(payload: any) {
-    // payload: { state, layout }
     const state = payload.state;
     const layout = payload.layout ?? {};
 
-    // Position our layers using layout values provided by BattleScene
     const gridLeft = layout.gridLeft ?? 100;
-    const handATopY = layout.handATopY ?? (this.scale.height - 200);
-    const handBBotY = layout.handBBotY ?? 100;
     const rightPanelX = layout.rightPanelX ?? (gridLeft + 600);
 
-    // set container positions (HandView / QueueView do internal placement)
-    this.handLayerA.setPosition(gridLeft, handATopY);
-    this.handLayerB.setPosition(gridLeft, handBBotY);
-    this.queueLayerA.setPosition(rightPanelX, 0);
-    this.queueLayerB.setPosition(rightPanelX, 0);
+    // Position and draw each team's hand/queue
+    const teams = state.teams ?? {};
+    const teamIds = Object.keys(teams);
 
-    // Build / refresh hands
-    this.handViewA.build('A', state.teamA.hand, 0, COLOR_A);
-    this.handViewB.build('B', state.teamB.hand, 0, COLOR_B);
+    // Layout helpers: vertical offsets - basic scheme for two teams, for N teams you can expand later.
+    let idx = 0;
+    for (const tid of teamIds) {
+      this.ensureTeamViews(tid);
+      const handLayer = this.handLayers[tid];
+      const queueLayer = this.queueLayers[tid];
 
-    // QueueView expects Card[]; we map queued plays -> card for simple display.
-    this.queueViewA.build('A', state.teamA.queue.map((q: any) => q.card), 40, COLOR_A);
-    this.queueViewB.build('B', state.teamB.queue.map((q: any) => q.card), 40, COLOR_B);
+      // simple stacking: alternate or spread — keep previous behavior for first two.
+      const handTopY = idx === 0 ? (this.scale.height - 200) : 100;
+      const queueTopY = 0;
+
+      handLayer.setPosition(gridLeft, handTopY);
+      queueLayer.setPosition(rightPanelX + idx * 220, queueTopY);
+
+      const teamState = teams[tid];
+      // Build hands & queues using the per-team view objects
+      this.handViews[tid].build(tid, teamState.hand, 0, tid === 'A' ? COLOR_A : COLOR_B);
+      this.queueViews[tid].build(tid, teamState.queue.map((q: any) => q.card), 40, tid === 'A' ? COLOR_A : COLOR_B);
+
+      idx++;
+    }
   }
 }

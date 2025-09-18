@@ -18,6 +18,10 @@ import {
   COLOR_BG
 } from './constants';
 
+import { relay } from "../state/relay";
+import type { SnapshotEvt, PresenceEvt, MatchState, ActorID } from "../state/types";
+import GameStateModel from "../models/game-state";
+
 // Define TileContainer type to extend Phaser.GameObjects.Container with extra properties used in the code
 // type TileContainer = Phaser.GameObjects.Container & {
 //   bg?: Phaser.GameObjects.Graphics;
@@ -31,7 +35,7 @@ import {
 
 export default class BattleScene extends Phaser.Scene {
   // state
-  private state!: ReturnType<typeof newMatch>;
+  private state!: MatchState;
   private started = false;
   private mode: "Queue3" | "SingleCard" = "Queue3";
 
@@ -51,6 +55,9 @@ export default class BattleScene extends Phaser.Scene {
   // UI
   private toggleText!: Phaser.GameObjects.Text;
   private resolveBtn!: Phaser.GameObjects.Text;
+
+  private stateOnline: Record<string, unknown> = {};
+  private presenceText!: Phaser.GameObjects.Text;
   // ====== Scene ======
   constructor() {
     super("Battle");
@@ -68,6 +75,50 @@ export default class BattleScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor(COLOR_BG);
     this.state = newMatch(this.mode);
+
+
+    relay.init(import.meta.env.VITE_RELAY_URL ?? "http://localhost:3000");
+
+    // Subscribe to events
+    relay.onJoined(({ roomId, playerId }) => {
+      console.log("[joined]", roomId, playerId);
+      // Optionally request a fresh snapshot on join ack (server also sends one)
+      relay.stateGet();
+    });
+
+    relay.onSnapshot((snap: SnapshotEvt) => {
+      this.stateOnline = snap.state ?? {};
+      // Update UI/HUD/other systems from state here
+      // e.g., this.events.emit("world:sync", this.state);
+      // For demo:
+      this.presenceText.setText([
+        `Room: ${snap.roomId}`,
+        `Players: ${snap.players.length}`,
+        `ServerTime: ${new Date(snap.serverTime).toLocaleTimeString()}`
+      ].join("\n"));
+    });
+
+    relay.onPresence((p: PresenceEvt) => {
+      // If you have a lobby panel, update it here
+      console.log("[presence]", p);
+    });
+
+    relay.onError((e) => console.warn("[server error]", e));
+    relay.onChat((m) => console.log("[chat]", m));
+
+    // Join a room (pull from your UI; hard-coded here)
+    relay.join({ roomId: "test123", name: "PhaserTS" });
+
+    // Simple HUD
+    this.presenceText = this.add.text(10, 10, "Connecting...", { fontSize: "14px", color: "#fff" });
+
+    // Example: press P to send a patch; C to send a chat message
+    this.input.keyboard!.on("keydown-P", () => {
+      relay.statePatch({ patch: { lastAction: "pressed_P", t: Date.now() } });
+    });
+    this.input.keyboard!.on("keydown-C", () => {
+      relay.chat({ text: "Hello from Phaser 👋" });
+    });
 
     // create actor sprite wrappers BEFORE drawing rectangles so the old rectangle tokens are skipped/destroyed
     // pick initial texture based on actor facing (fallback to down)
@@ -267,12 +318,11 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private refreshHud() {
-    const A = this.state.actors.A,
-      B = this.state.actors.B;
+    const A = this.state.actors.A, B = this.state.actors.B;
     this.hudText.setText(
       [
         `Round ${this.state.round}  Tick ${this.state.tick}`,
-        `A HP:${A.hp}  VP:${this.state.teamA.vp}   B HP:${B.hp}  VP:${this.state.teamB.vp}`,
+        `A HP:${A.hp}  B HP:${B.hp}`,
         `Winner: ${this.state.winner ?? "-"}`,
       ].join("\n")
     );
@@ -562,14 +612,17 @@ export default class BattleScene extends Phaser.Scene {
   // }
 
   private onUiQueueRequested(payload: any) {
-    const { team, handIndex, card, dir } = payload;
+    // payload.team used to be 'A'|'B' in previous code; now it's any ActorID.
+     const {card } = payload;
+    const teamId: ActorID = payload.team;
+    // delegate to match helpers expecting actorId, e.g. queuePlay(teamId, this.state, payload.qp)
     if (!this.started) return;
-    const side = team === "A" ? this.state.teamA : this.state.teamB;
+    const side = teamId === "A" ? this.state.teams.A : this.state.teams.B;
     const limit = this.state.mode === "Queue3" ? 3 : 1;
     if (side.queue.length >= limit) return;
 
     // queue via state API; BattleScene owns game logic
-    queuePlay(team, this.state, { card, dir });
+    queuePlay(teamId, this.state, { card, dir: payload.qp.dir });
 
     // After mutating state, notify UIScene to refresh visuals
     this.game.events.emit('matchStateUpdated', {
@@ -579,27 +632,32 @@ export default class BattleScene extends Phaser.Scene {
     this.refreshHud();
   }
 
-  private onUiRemoveRequested(payload: any) {
-    const { team, index } = payload;
-    if (!this.started) return;
-    const arr = team === "A" ? this.state.teamA.queue : this.state.teamB.queue;
-    if (index < 0 || index >= arr.length) return;
-    arr.splice(index, 1);
+  // private shutdown() {
+  //   // optional: leave room when scene unloads
+  //   relay.leave();
+  // }
 
-    // notify UIScene to refresh visuals
-    this.game.events.emit('matchStateUpdated', {
-      state: this.state,
-      layout: { gridLeft: this.gridLeft, handATopY: this.handATopY, handBBotY: this.handBBotY, rightPanelX: this.rightPanelX }
-    });
-    this.refreshHud();
+  private onUiRemoveRequested(payload: any) {
+    const teamId: ActorID = payload.team;
+    const idx: number = payload.index;
+    const team = this.state.teams?.[teamId];
+    if (team && team.queue && team.queue[idx]) {
+      team.queue.splice(idx, 1);
+      this.game.events.emit("matchStateUpdated", { state: this.state, layout: {} });
+    }
   }
 
   // ====== Tick resolution loop ======
   private resolveNextTick() {
+    // Example: where code previously referenced this.state.teamA / teamB, use teams map.
+    const teams = this.state.teams;
+    const teamA = teams ? teams['A'] : undefined;
+    const teamB = teams ? teams['B'] : undefined;
+
     if (!this.started || this.state.winner) return;
 
-    const aPlay = this.state.teamA.queue.shift();
-    const bPlay = this.state.teamB.queue.shift();
+    const aPlay = this.state.teams.A.queue.shift();
+    const bPlay = this.state.teams.B.queue.shift();
     resolveOneTick(this.state, aPlay, bPlay);
 
     // game logic updated actor positions/hp etc.
@@ -610,8 +668,8 @@ export default class BattleScene extends Phaser.Scene {
       if (this.state.tick >= 3) {
         atEndOfRoundScoreNexus(this.state);
         resetQueues(this.state);
-        freshRound(this.state.teamA, this.state.handMax, this.state.rng);
-        freshRound(this.state.teamB, this.state.handMax, this.state.rng);
+        freshRound(this.state.teams.A, this.state.handMax, this.state.rng);
+        freshRound(this.state.teams.B, this.state.handMax, this.state.rng);
         this.state.round += 1;
         this.state.tick = 1;
         // notify UI to rebuild hands/queues for fresh cards
@@ -629,8 +687,8 @@ export default class BattleScene extends Phaser.Scene {
       }
     } else {
       // SingleCard: draw up and keep going
-      drawTo(this.state.teamA.hand, this.state.teamA.drawPile, this.state.handMax);
-      drawTo(this.state.teamB.hand, this.state.teamB.drawPile, this.state.handMax);
+      drawTo(this.state.teams.A.hand, this.state.teams.A.drawPile, this.state.handMax);
+      drawTo(this.state.teams.B.hand, this.state.teams.B.drawPile, this.state.handMax);
       this.state.tick += 1;
       this.game.events.emit('matchStateUpdated', {
         state: this.state,
@@ -638,9 +696,15 @@ export default class BattleScene extends Phaser.Scene {
       });
     }
 
-    this.state.winner = checkVictory(this.state);
+      // ...existing code that mutates this.state...
+  // build JSON-safe snapshot and send to server
+    const model = new GameStateModel(this.state);
+    relay.stateSet({ state: model.toPlain() });
+
+    this.stateOnline.winner = checkVictory(this.state);
     this.refreshHud();
   }
+  
 
   // private popFrontQueueTile(team: "A" | "B") {
   //   const tiles = team === "A" ? this.queueTilesA : this.queueTilesB;

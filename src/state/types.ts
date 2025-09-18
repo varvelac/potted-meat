@@ -2,7 +2,8 @@
 // Identifiers & Core Types
 // -------------------------
 
-export type ActorID = 'A' | 'B';
+// ActorID is a string so the game can support arbitrary player IDs (A, B, C, ... or UUIDs).
+export type ActorID = string;
 
 export interface Board {
   w: number;
@@ -29,7 +30,8 @@ export interface Tile {
 
 export interface Actor {
   id: ActorID;
-  team: 'A' | 'B';
+  // Use ActorID here so an actor's team/owner can be any player id string.
+  team: ActorID;
   hp: number;
   maxHp: number;
   pos: { x: number; y: number };
@@ -137,11 +139,45 @@ export interface MatchState {
   mode: 'Queue3' | 'SingleCard';
   board: Board;
   actors: Record<ActorID, Actor>;
-  teamA: TeamState;
-  teamB: TeamState;
+  // Use a dynamic teams map instead of fixed teamA/teamB so this supports
+  // N players in future.
+  teams: Record<ActorID, TeamState>;
   round: number;
   tick: number;
   handMax: number;
   rng: () => number;
   winner: ActorID | null;
 }
+
+//////////-------------------------
+// Socket.io Types
+// -------------------------
+
+export const PROTOCOL_VERSION = 1 as const;
+
+export type RoomId = string;
+export type PlayerId = string;
+
+export interface JoinReq { roomId: RoomId; name?: string }
+export interface JoinedEvt { roomId: RoomId; playerId: PlayerId }
+
+export interface PresenceEvt {
+  players: { id: PlayerId; name: string }[];
+  counts: { players: number; minPlayers: number; maxPlayers: number };
+}
+
+export interface SnapshotEvt {
+  roomId: RoomId;
+  serverTime: number;
+  state: Record<string, unknown>;
+  players: { id: PlayerId; name: string }[];
+  version: number;
+}
+
+export interface ChatReq { text: string }
+export interface ChatEvt { from: PlayerId; text: string; at: number }
+
+export interface StateSetReq { state: Record<string, unknown> }
+export interface StatePatchReq { patch: Record<string, unknown> }
+
+export interface ErrorEvt { code: string; message: string }

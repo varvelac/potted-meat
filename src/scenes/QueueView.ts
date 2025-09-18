@@ -41,7 +41,8 @@ export default class QueueView {
     this.layer = layer;
   }
 
-  build(team: "A" | "B", queue: Card[], baseY: number, colorHex: string) {
+  // team: ActorID (string) now
+  build(team: string, queue: Card[], baseY: number, colorHex: string) {
     this.clear();
     this.tiles = [];
 
@@ -75,7 +76,6 @@ export default class QueueView {
       // capture index in closure
       ((idx) => {
         g.on("pointerup", () => {
-          // request removal of queued play at index
           this.scene.game.events.emit("ui:removeQueued", { team, index: idx });
         });
       })(i);
